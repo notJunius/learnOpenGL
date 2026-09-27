@@ -77,11 +77,11 @@ void main()
 fragment_shader_source: cstring = `
 #version 460 core
 out vec4 FragColor;
-in vec4 vertex_color;
+uniform vec4 our_color;
 
 void main()
 {
-    FragColor = vertex_color;
+    FragColor = our_color;
 }
 `
 

@@ -2,6 +2,7 @@ package engine
 
 import "base:runtime"
 import "core:fmt"
+import "core:math"
 import gl "vendor:OpenGL"
 import "vendor:glfw"
 
@@ -112,10 +113,23 @@ main :: proc() {
 		//input
 		process_input(window)
 
+		// update values
+		time_value := glfw.GetTime()
+		green_value: f32 = math.sin(f32(time_value) / 2) + .5
+		// set uniform value to a variable
+		vertex_color_location := gl.GetUniformLocation(shader_program, "our_color")
+
 		// rendering commands here
 		gl.Clear(gl.COLOR_BUFFER_BIT)
 		// program you want to use
 		gl.UseProgram(shader_program)
+		// begin changing values in shader
+		// the uniform 4f means the first parameter has 4 float values
+		// so in this case, vertex_color_location is a vec4, and the next 4
+		// values, are the vec4 color values -> vec4(0, green_value, 0, 1)
+		// so if you change the first zero or second zero, you are changing
+		// the red and blue value respectively, and the last value is the opacity
+		gl.Uniform4f(vertex_color_location, 0, green_value, 0, 1)
 		// data you want to draw
 		// bind first triangle
 		gl.BindVertexArray(vao[0])
