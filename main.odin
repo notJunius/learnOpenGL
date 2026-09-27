@@ -122,7 +122,7 @@ main :: proc() {
 		gl.DrawArrays(gl.TRIANGLES, 0, 3)
 		//gl.DrawElements(gl.TRIANGLES, 6, gl.UNSIGNED_INT, nil)
 		// bind second triangle
-		gl.UseProgram(yellow_program)
+		//gl.UseProgram(yellow_program)
 		gl.BindVertexArray(vao[1])
 		gl.DrawArrays(gl.TRIANGLES, 0, 3)
 
