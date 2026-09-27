@@ -2,6 +2,30 @@ package engine
 
 first_vertices: [9]f32 = {-.9, -.5, 0, 0, -.5, 0, -.45, .5, 0}
 second_vertices: [9]f32 = {0, -.5, 0, .9, -.5, 0, .45, .5, 0}
+
+
+hello_triangle_with_color: [18]f32 = {.5, -.5, 0, 1, 0, 0, -.5, -.5, 0, 0, 1, 0, 0, .5, 0, 0, 0, 1}
+
+first_vertices_with_color: [18]f32 = {
+	-.9,
+	-.5,
+	0, // vertex
+	1,
+	0,
+	0, // rgb value (red)
+	0,
+	-.5,
+	0, // vertex
+	0,
+	1,
+	0, // rgb value (green)
+	-.45,
+	.5,
+	0, // vertex
+	0,
+	0,
+	1, // rgb value (blue)
+}
 two_triangles_vertices: [18]f32 = {
 	-.9,
 	-.5,
@@ -62,35 +86,3 @@ rect_indices: [6]u32 = { 	// note that we start from zero
 	2,
 	3, // second triangle
 }
-
-vertex_shader_source: cstring = `
-#version 460 core
-layout (location = 0) in vec3 aPos;
-out vec4 vertex_color;
-void main()
-{
-	gl_Position = vec4(aPos,1.0);
-	vertex_color = vec4(0.5, 0.0, 0.0, 1.0);
-}
-`
-
-fragment_shader_source: cstring = `
-#version 460 core
-out vec4 FragColor;
-uniform vec4 our_color;
-
-void main()
-{
-    FragColor = our_color;
-}
-`
-
-fragment_shader_source_yellow: cstring = `
-#version 460 core
-out vec4 FragColor;
-
-void main()
-{
-    FragColor = vec4(1.0f, 1.0f, 0.0f, 1.0f);
-}
-`

@@ -38,47 +38,23 @@ main :: proc() {
 	// set background color
 	gl.ClearColor(.2, .3, .3, 1)
 
-	//shaders
-	vertex_shader: u32 = gl.CreateShader(gl.VERTEX_SHADER)
-	gl.ShaderSource(vertex_shader, 1, &vertex_shader_source, nil)
-	gl.CompileShader(vertex_shader)
-
-	fragment_shader: u32 = gl.CreateShader(gl.FRAGMENT_SHADER)
-	gl.ShaderSource(fragment_shader, 1, &fragment_shader_source, nil)
-	gl.CompileShader(fragment_shader)
-
-	yellow_shader: u32 = gl.CreateShader(gl.FRAGMENT_SHADER)
-	gl.ShaderSource(yellow_shader, 1, &fragment_shader_source_yellow, nil)
-	gl.CompileShader(yellow_shader)
-
-	// put both the vertex and fragment shaders into a program
-	shader_program: u32 = gl.CreateProgram()
-	gl.AttachShader(shader_program, vertex_shader)
-	gl.AttachShader(shader_program, fragment_shader)
-	gl.LinkProgram(shader_program)
-	gl.DeleteShader(fragment_shader)
-
-	yellow_program: u32 = gl.CreateProgram()
-	gl.AttachShader(yellow_program, vertex_shader)
-	gl.AttachShader(yellow_program, yellow_shader)
-	gl.LinkProgram(yellow_program)
-	gl.DeleteShader(vertex_shader)
-	gl.DeleteShader(yellow_shader)
-
-
 	//vbos and vaos
-	vbo, vao: [2]u32
-	gl.GenVertexArrays(2, &vao[0])
-	gl.GenBuffers(2, &vbo[0])
-	defer gl.DeleteVertexArrays(2, &vao[0])
-	defer gl.DeleteBuffers(2, &vbo[0])
-	defer gl.DeleteProgram(shader_program)
+	vbo, vao: u32
+	gl.GenVertexArrays(1, &vao)
+	gl.GenBuffers(1, &vbo)
+	defer gl.DeleteVertexArrays(1, &vao)
+	defer gl.DeleteBuffers(1, &vbo)
 	// for first triangle
 	// bind the VAO first,
-	gl.BindVertexArray(vao[0])
+	gl.BindVertexArray(vao)
 	//then bind and set VBO
-	gl.BindBuffer(gl.ARRAY_BUFFER, vbo[0])
-	gl.BufferData(gl.ARRAY_BUFFER, size_of(first_vertices), &first_vertices, gl.STATIC_DRAW)
+	gl.BindBuffer(gl.ARRAY_BUFFER, vbo)
+	gl.BufferData(
+		gl.ARRAY_BUFFER,
+		size_of(hello_triangle_with_color),
+		&hello_triangle_with_color,
+		gl.STATIC_DRAW,
+	)
 	// ebo (for drawing a rectangle)
 	// ebo: u32
 	// gl.GenBuffers(1, &ebo)
@@ -90,21 +66,18 @@ main :: proc() {
 	// 	gl.STATIC_DRAW,
 	// )
 	//then configure vertex attributes
-	gl.VertexAttribPointer(0, 3, gl.FLOAT, gl.FALSE, 3 * size_of(f32), 0)
+	// first attribute of first triangle
+	gl.VertexAttribPointer(0, 3, gl.FLOAT, gl.FALSE, 6 * size_of(f32), 0)
 	gl.EnableVertexAttribArray(0)
-	// second triangle
-	// bind the second VAO
-	gl.BindVertexArray(vao[1])
-	// bind and set the second VBO
-	gl.BindBuffer(gl.ARRAY_BUFFER, vbo[1])
-	gl.BufferData(gl.ARRAY_BUFFER, size_of(second_vertices), &second_vertices, gl.STATIC_DRAW)
-	// configure second vertex attributes
-	gl.VertexAttribPointer(0, 3, gl.FLOAT, gl.FALSE, 3 * size_of(f32), 0)
-	gl.EnableVertexAttribArray(0)
-
+	gl.VertexAttribPointer(1, 3, gl.FLOAT, gl.FALSE, 6 * size_of(f32), 3 * size_of(f32))
+	gl.EnableVertexAttribArray(1)
 
 	// uncomment this is you want to draw in wireframe polygons
 	// gl.PolygonMode(gl.FRONT_AND_BACK, gl.LINE)
+
+	hello_shader := make_shader("./shaders/v_shader.vs", "./shaders/f_shader.fs")
+	ud_shader := make_shader("./shaders/upside_down.vs", "./shaders/f_shader.fs")
+	move_right := make_shader("./shaders/move_right.vs", "./shaders/f_shader.fs")
 
 
 	// render loop
@@ -113,32 +86,16 @@ main :: proc() {
 		//input
 		process_input(window)
 
-		// update values
-		time_value := glfw.GetTime()
-		green_value: f32 = math.sin(f32(time_value) / 2) + .5
-		// set uniform value to a variable
-		vertex_color_location := gl.GetUniformLocation(shader_program, "our_color")
-
 		// rendering commands here
 		gl.Clear(gl.COLOR_BUFFER_BIT)
-		// program you want to use
-		gl.UseProgram(shader_program)
-		// begin changing values in shader
-		// the uniform 4f means the first parameter has 4 float values
-		// so in this case, vertex_color_location is a vec4, and the next 4
-		// values, are the vec4 color values -> vec4(0, green_value, 0, 1)
-		// so if you change the first zero or second zero, you are changing
-		// the red and blue value respectively, and the last value is the opacity
-		gl.Uniform4f(vertex_color_location, 0, green_value, 0, 1)
-		// data you want to draw
 		// bind first triangle
-		gl.BindVertexArray(vao[0])
+		gl.BindVertexArray(vao)
+		use_shader(&hello_shader)
+		gl.DrawArrays(gl.TRIANGLES, 0, 3)
+		use_shader(&move_right)
+		set_shader_float(&move_right, "x_adjust", .5)
 		gl.DrawArrays(gl.TRIANGLES, 0, 3)
 		//gl.DrawElements(gl.TRIANGLES, 6, gl.UNSIGNED_INT, nil)
-		// bind second triangle
-		//gl.UseProgram(yellow_program)
-		gl.BindVertexArray(vao[1])
-		gl.DrawArrays(gl.TRIANGLES, 0, 3)
 
 
 		//check call events and swap the buffers
