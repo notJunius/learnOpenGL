@@ -14,8 +14,8 @@ GL_MINOR_VERSION :: 6
 main :: proc() {
 	// init glfw
 	glfw.Init()
-
 	defer glfw.Terminate()
+
 	glfw.WindowHint(glfw.CONTEXT_VERSION_MAJOR, GL_MAJOR_VERSION)
 	glfw.WindowHint(glfw.CONTEXT_VERSION_MINOR, GL_MINOR_VERSION)
 	glfw.WindowHint(glfw.OPENGL_PROFILE, glfw.OPENGL_CORE_PROFILE)
@@ -46,25 +46,64 @@ main :: proc() {
 	gl.ShaderSource(fragment_shader, 1, &fragment_shader_source, nil)
 	gl.CompileShader(fragment_shader)
 
+	yellow_shader: u32 = gl.CreateShader(gl.FRAGMENT_SHADER)
+	gl.ShaderSource(yellow_shader, 1, &fragment_shader_source_yellow, nil)
+	gl.CompileShader(yellow_shader)
+
 	// put both the vertex and fragment shaders into a program
 	shader_program: u32 = gl.CreateProgram()
 	gl.AttachShader(shader_program, vertex_shader)
 	gl.AttachShader(shader_program, fragment_shader)
 	gl.LinkProgram(shader_program)
-	gl.DeleteShader(vertex_shader)
 	gl.DeleteShader(fragment_shader)
 
-	//vbos and vaos
-	vbo: u32
-	gl.GenBuffers(1, &vbo)
-	gl.BindBuffer(gl.ARRAY_BUFFER, vbo)
-	gl.BufferData(gl.ARRAY_BUFFER, size_of(vertices), &vertices, gl.STATIC_DRAW)
-	vao: u32
-	gl.GenVertexArrays(1, &vao)
-	gl.BindVertexArray(vao)
+	yellow_program: u32 = gl.CreateProgram()
+	gl.AttachShader(yellow_program, vertex_shader)
+	gl.AttachShader(yellow_program, yellow_shader)
+	gl.LinkProgram(yellow_program)
+	gl.DeleteShader(vertex_shader)
+	gl.DeleteShader(yellow_shader)
 
+
+	//vbos and vaos
+	vbo, vao: [2]u32
+	gl.GenVertexArrays(2, &vao[0])
+	gl.GenBuffers(2, &vbo[0])
+	defer gl.DeleteVertexArrays(2, &vao[0])
+	defer gl.DeleteBuffers(2, &vbo[0])
+	defer gl.DeleteProgram(shader_program)
+	// for first triangle
+	// bind the VAO first,
+	gl.BindVertexArray(vao[0])
+	//then bind and set VBO
+	gl.BindBuffer(gl.ARRAY_BUFFER, vbo[0])
+	gl.BufferData(gl.ARRAY_BUFFER, size_of(first_vertices), &first_vertices, gl.STATIC_DRAW)
+	// ebo (for drawing a rectangle)
+	// ebo: u32
+	// gl.GenBuffers(1, &ebo)
+	// gl.BindBuffer(gl.ELEMENT_ARRAY_BUFFER, ebo)
+	// gl.BufferData(
+	// 	gl.ELEMENT_ARRAY_BUFFER,
+	// 	size_of(trapezoid_indices),
+	// 	&trapezoid_indices,
+	// 	gl.STATIC_DRAW,
+	// )
+	//then configure vertex attributes
 	gl.VertexAttribPointer(0, 3, gl.FLOAT, gl.FALSE, 3 * size_of(f32), 0)
 	gl.EnableVertexAttribArray(0)
+	// second triangle
+	// bind the second VAO
+	gl.BindVertexArray(vao[1])
+	// bind and set the second VBO
+	gl.BindBuffer(gl.ARRAY_BUFFER, vbo[1])
+	gl.BufferData(gl.ARRAY_BUFFER, size_of(second_vertices), &second_vertices, gl.STATIC_DRAW)
+	// configure second vertex attributes
+	gl.VertexAttribPointer(0, 3, gl.FLOAT, gl.FALSE, 3 * size_of(f32), 0)
+	gl.EnableVertexAttribArray(0)
+
+
+	// uncomment this is you want to draw in wireframe polygons
+	// gl.PolygonMode(gl.FRONT_AND_BACK, gl.LINE)
 
 
 	// render loop
@@ -75,8 +114,16 @@ main :: proc() {
 
 		// rendering commands here
 		gl.Clear(gl.COLOR_BUFFER_BIT)
+		// program you want to use
 		gl.UseProgram(shader_program)
-		gl.BindVertexArray(vao)
+		// data you want to draw
+		// bind first triangle
+		gl.BindVertexArray(vao[0])
+		gl.DrawArrays(gl.TRIANGLES, 0, 3)
+		//gl.DrawElements(gl.TRIANGLES, 6, gl.UNSIGNED_INT, nil)
+		// bind second triangle
+		gl.UseProgram(yellow_program)
+		gl.BindVertexArray(vao[1])
 		gl.DrawArrays(gl.TRIANGLES, 0, 3)
 
 
