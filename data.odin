@@ -5,7 +5,9 @@ second_vertices: [9]f32 = {0, -.5, 0, .9, -.5, 0, .45, .5, 0}
 
 
 hello_triangle_with_color: [18]f32 = {.5, -.5, 0, 1, 0, 0, -.5, -.5, 0, 0, 1, 0, 0, .5, 0, 0, 0, 1}
+triangle_tex_coords: [6]f32 = {0, 0, 1, 0, .5, 1}
 
+// fmt: off
 first_vertices_with_color: [18]f32 = {
 	-.9,
 	-.5,

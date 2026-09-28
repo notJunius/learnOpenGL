@@ -2,9 +2,9 @@ package engine
 
 import "base:runtime"
 import "core:fmt"
-import "core:math"
 import gl "vendor:OpenGL"
 import "vendor:glfw"
+//import stb_i "vendor:stb/image"
 
 
 // 4.1 is the latest compatible version on macos
@@ -78,6 +78,32 @@ main :: proc() {
 	hello_shader := make_shader("./shaders/v_shader.vs", "./shaders/f_shader.fs")
 	ud_shader := make_shader("./shaders/upside_down.vs", "./shaders/f_shader.fs")
 	move_right := make_shader("./shaders/move_right.vs", "./shaders/f_shader.fs")
+
+	// textures ------------------------------------------
+	//width, height, nr_channels: i32
+	////load image
+	//texture_data: [^]u8 = stb_i.load("./textures/wall.jpg", &width, &height, &nr_channels, 0)
+	//defer stb_i.image_free(texture_data)
+	// gen texture
+	//texture: u32
+	//gl.GenTextures(1, &texture)
+	//// bind texture
+	//gl.BindTexture(gl.TEXTURE_2D, texture)
+	//// gen texture from image
+	//gl.TexImage2D(
+	//	gl.TEXTURE_2D,
+	//	0,
+	//	gl.RGB,
+	//	width,
+	//	height,
+	//	0,
+	//	gl.RGB,
+	//	gl.UNSIGNED_BYTE,
+	//	texture_data,
+	//)
+	//gl.GenerateMipmap(gl.TEXTURE_2D)
+
+	xoffset: f32 = .5
 
 
 	// render loop
