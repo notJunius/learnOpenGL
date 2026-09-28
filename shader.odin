@@ -61,7 +61,7 @@ make_shader :: proc(vertex_path, fragment_path: string) -> Shader {
 	// print linking errors if any
 	gl.GetProgramiv(id, gl.LINK_STATUS, &success)
 	if success == 0 {
-		gl.GetShaderInfoLog(fragment, 512, nil, &info_log[0])
+		gl.GetProgramInfoLog(id, 512, nil, &info_log[0])
 		fmt.eprintln("ERROR::SHADER::PROGRAM::LINKING_FAILED", info_log)
 	}
 

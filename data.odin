@@ -79,6 +79,40 @@ rect_vertices: [12]f32 = {
 	.5,
 	0, // bottom right
 }
+rect_vertices_with_color_and_texture: [32]f32 = {
+	.5,
+	.5,
+	0,
+	1,
+	0,
+	0,
+	1,
+	1, // top right
+	.5,
+	-.5,
+	0,
+	0,
+	1,
+	0,
+	1,
+	0, // bottom right
+	-.5,
+	-.5,
+	0,
+	0,
+	0,
+	1,
+	0,
+	0, // bottom left
+	-.5,
+	.5,
+	0,
+	1,
+	1,
+	0,
+	0,
+	1, // bottom right
+}
 
 rect_indices: [6]u32 = { 	// note that we start from zero
 	0,
