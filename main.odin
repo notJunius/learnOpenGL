@@ -78,6 +78,7 @@ main :: proc() {
 	move_right := make_shader("./shaders/move_right.vs", "./shaders/f_shader.fs")
 	texture_shader := make_shader("./shaders/texture.vs", "./shaders/texture.fs")
 
+
 	// textures ------------------------------------------
 	// gen texture
 	texture: u32
@@ -89,6 +90,7 @@ main :: proc() {
 	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.REPEAT)
 	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR_MIPMAP_LINEAR)
 	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR)
+	// define values for image load function
 	width, height, nr_channels: i32
 	//load image
 	texture_data: [^]u8 = stb_i.load(
@@ -102,13 +104,15 @@ main :: proc() {
 	// check if image loaded
 	if texture_data != nil {
 		// gen texture from image
+		// because the texture declared earlier was bound, the function
+		// is going to put this image into that texture
 		gl.TexImage2D(
 			gl.TEXTURE_2D,
 			0,
 			gl.RGB,
 			width,
 			height,
-			0,
+			0, // always zero, (legacy stuff)
 			gl.RGB,
 			gl.UNSIGNED_BYTE,
 			texture_data,
@@ -117,10 +121,6 @@ main :: proc() {
 	} else {
 		fmt.println("Failed to load texture")
 	}
-
-
-	xoffset: f32 = .5
-
 
 	// render loop
 	for !glfw.WindowShouldClose(window) {
