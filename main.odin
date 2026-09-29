@@ -12,6 +12,8 @@ import stb_i "vendor:stb/image"
 GL_MAJOR_VERSION :: 4
 GL_MINOR_VERSION :: 6
 
+visibility: f32 = .2
+
 
 main :: proc() {
 	// init glfw
@@ -165,11 +167,13 @@ main :: proc() {
 	set_shader_int(&texture_shader, "our_texture", 0)
 	set_shader_int(&texture_shader, "our_texture2", 1)
 
+
 	// render loop
 	for !glfw.WindowShouldClose(window) {
 
 		//input
 		process_input(window)
+		set_shader_float(&texture_shader, "visibility", visibility)
 
 		// rendering commands here
 		gl.Clear(gl.COLOR_BUFFER_BIT)
@@ -210,5 +214,11 @@ framebuffer_size_callback :: proc "c" (window: glfw.WindowHandle, width, height:
 process_input :: proc(window: glfw.WindowHandle) {
 	if glfw.GetKey(window, glfw.KEY_ESCAPE) == glfw.PRESS {
 		glfw.SetWindowShouldClose(window, true)
+	}
+	if glfw.GetKey(window, glfw.KEY_UP) == glfw.PRESS {
+		visibility += 0.2
+	}
+	if glfw.GetKey(window, glfw.KEY_DOWN) == glfw.PRESS {
+		visibility -= 0.2
 	}
 }
