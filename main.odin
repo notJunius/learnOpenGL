@@ -121,6 +121,49 @@ main :: proc() {
 	} else {
 		fmt.println("Failed to load texture")
 	}
+	// gen texture
+	texture2: u32
+	gl.GenTextures(1, &texture2)
+	// bind texture
+	gl.BindTexture(gl.TEXTURE_2D, texture2)
+	// set wrapping/filtering options
+	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.REPEAT)
+	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.REPEAT)
+	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR_MIPMAP_LINEAR)
+	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR)
+	//load image
+	// flip image before loading
+	stb_i.set_flip_vertically_on_load(1)
+	texture_data = stb_i.load(
+		strings.clone_to_cstring("./textures/awesomeface.png"),
+		&width,
+		&height,
+		&nr_channels,
+		0,
+	)
+	// check if image loaded
+	if texture_data != nil {
+		// gen texture from image
+		// because the texture declared earlier was bound, the function
+		// is going to put this image into that texture
+		gl.TexImage2D(
+			gl.TEXTURE_2D,
+			0,
+			gl.RGB,
+			width,
+			height,
+			0, // always zero, (legacy stuff)
+			gl.RGBA,
+			gl.UNSIGNED_BYTE,
+			texture_data,
+		)
+		gl.GenerateMipmap(gl.TEXTURE_2D)
+	} else {
+		fmt.println("Failed to load texture")
+	}
+	use_shader(&texture_shader)
+	set_shader_int(&texture_shader, "our_texture", 0)
+	set_shader_int(&texture_shader, "our_texture2", 1)
 
 	// render loop
 	for !glfw.WindowShouldClose(window) {
@@ -131,8 +174,10 @@ main :: proc() {
 		// rendering commands here
 		gl.Clear(gl.COLOR_BUFFER_BIT)
 		//bind texture to rect
+		gl.ActiveTexture(gl.TEXTURE0)
 		gl.BindTexture(gl.TEXTURE_2D, texture)
-		use_shader(&texture_shader)
+		gl.ActiveTexture(gl.TEXTURE1)
+		gl.BindTexture(gl.TEXTURE_2D, texture2)
 		gl.BindVertexArray(vao)
 		gl.DrawElements(gl.TRIANGLES, 6, gl.UNSIGNED_INT, nil)
 		// bind first triangle
