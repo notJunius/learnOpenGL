@@ -2,6 +2,8 @@ package engine
 
 import "base:runtime"
 import "core:fmt"
+import "core:math/linalg"
+import "core:math/linalg/glsl"
 import "core:strings"
 import gl "vendor:OpenGL"
 import "vendor:glfw"
@@ -16,6 +18,8 @@ visibility: f32 = .2
 
 
 main :: proc() {
+
+
 	// init glfw
 	glfw.Init()
 	defer glfw.Terminate()
@@ -38,8 +42,6 @@ main :: proc() {
 	gl.Viewport(0, 0, 800, 600)
 	glfw.SetFramebufferSizeCallback(window, framebuffer_size_callback)
 
-	// set background color
-	gl.ClearColor(.2, .3, .3, 1)
 
 	//vbos and vaos
 	vbo, vao: u32
@@ -79,6 +81,7 @@ main :: proc() {
 	ud_shader := make_shader("./shaders/upside_down.vs", "./shaders/f_shader.fs")
 	move_right := make_shader("./shaders/move_right.vs", "./shaders/f_shader.fs")
 	texture_shader := make_shader("./shaders/texture.vs", "./shaders/texture.fs")
+	transform_shader := make_shader("./shaders/transform.vs", "./shaders/texture.fs")
 
 
 	// textures ------------------------------------------
@@ -163,9 +166,9 @@ main :: proc() {
 	} else {
 		fmt.println("Failed to load texture")
 	}
-	use_shader(&texture_shader)
-	set_shader_int(&texture_shader, "our_texture", 0)
-	set_shader_int(&texture_shader, "our_texture2", 1)
+	use_shader(&transform_shader)
+	set_shader_int(&transform_shader, "our_texture", 0)
+	set_shader_int(&transform_shader, "our_texture2", 1)
 
 
 	// render loop
@@ -173,17 +176,38 @@ main :: proc() {
 
 		//input
 		process_input(window)
-		set_shader_float(&texture_shader, "visibility", visibility)
 
+		// set background color
+		gl.ClearColor(.2, .3, .3, 1)
 		// rendering commands here
 		gl.Clear(gl.COLOR_BUFFER_BIT)
+
 		//bind texture to rect
 		gl.ActiveTexture(gl.TEXTURE0)
 		gl.BindTexture(gl.TEXTURE_2D, texture)
 		gl.ActiveTexture(gl.TEXTURE1)
 		gl.BindTexture(gl.TEXTURE_2D, texture2)
+
+		// some math baby ---------------------------------------------
+		trans := glsl.mat4(1)
+		trans = linalg.matrix4_rotate(f32(glfw.GetTime()), [3]f32{0, 0, 1}) * trans
+		trans = linalg.matrix4_translate_f32({.5, -.5, 0}) * trans
+		// -------------------------------------------------------------
+		transformLoc := gl.GetUniformLocation(transform_shader.id, "transform")
+		gl.UniformMatrix4fv(transformLoc, 1, false, &trans[0][0])
+
+
 		gl.BindVertexArray(vao)
 		gl.DrawElements(gl.TRIANGLES, 6, gl.UNSIGNED_INT, nil)
+
+		trans = glsl.mat4(1)
+		scale_amount := f32(linalg.sin(glfw.GetTime()))
+		trans = linalg.matrix4_scale_f32({scale_amount, scale_amount, scale_amount}) * trans
+		fmt.println(trans)
+		trans = linalg.matrix4_translate_f32({-.5, .5, 0}) * trans
+		gl.UniformMatrix4fv(transformLoc, 1, false, &trans[0][0])
+		gl.DrawElements(gl.TRIANGLES, 6, gl.UNSIGNED_INT, nil)
+
 		// bind first triangle
 		//gl.BindVertexArray(vao)
 		//use_shader(&hello_shader)
@@ -214,11 +238,5 @@ framebuffer_size_callback :: proc "c" (window: glfw.WindowHandle, width, height:
 process_input :: proc(window: glfw.WindowHandle) {
 	if glfw.GetKey(window, glfw.KEY_ESCAPE) == glfw.PRESS {
 		glfw.SetWindowShouldClose(window, true)
-	}
-	if glfw.GetKey(window, glfw.KEY_UP) == glfw.PRESS {
-		visibility += 0.2
-	}
-	if glfw.GetKey(window, glfw.KEY_DOWN) == glfw.PRESS {
-		visibility -= 0.2
 	}
 }
