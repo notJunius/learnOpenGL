@@ -14,6 +14,9 @@ import stb_i "vendor:stb/image"
 GL_MAJOR_VERSION :: 4
 GL_MINOR_VERSION :: 6
 
+screen_height :: 600
+screen_width :: 800
+
 visibility: f32 = .2
 
 
@@ -31,7 +34,7 @@ main :: proc() {
 	//glfw.WindowHint(glfw.OPENGL_FORWARD_COMPAT, glfw.TRUE)
 
 	// create window object
-	window := glfw.CreateWindow(800, 600, "opengl", nil, nil)
+	window := glfw.CreateWindow(screen_width, screen_height, "opengl", nil, nil)
 	if window == nil {
 		fmt.println("Failed to create GLFW window")
 		glfw.Terminate()
@@ -41,6 +44,8 @@ main :: proc() {
 	gl.load_up_to(GL_MAJOR_VERSION, GL_MINOR_VERSION, glfw.gl_set_proc_address)
 	gl.Viewport(0, 0, 800, 600)
 	glfw.SetFramebufferSizeCallback(window, framebuffer_size_callback)
+
+	gl.Enable(gl.DEPTH_TEST)
 
 
 	//vbos and vaos
@@ -54,20 +59,13 @@ main :: proc() {
 	gl.BindVertexArray(vao)
 	//then bind and set VBO
 	gl.BindBuffer(gl.ARRAY_BUFFER, vbo)
-	gl.BufferData(
-		gl.ARRAY_BUFFER,
-		size_of(rect_vertices_with_color_and_texture),
-		&rect_vertices_with_color_and_texture,
-		gl.STATIC_DRAW,
-	)
+	gl.BufferData(gl.ARRAY_BUFFER, size_of(cube_vertices), &cube_vertices, gl.STATIC_DRAW)
 	//then configure vertex attributes
 	// first attribute of first triangle
-	gl.VertexAttribPointer(0, 3, gl.FLOAT, gl.FALSE, 8 * size_of(f32), 0)
+	gl.VertexAttribPointer(0, 3, gl.FLOAT, gl.FALSE, 5 * size_of(f32), 0)
 	gl.EnableVertexAttribArray(0)
-	gl.VertexAttribPointer(1, 3, gl.FLOAT, gl.FALSE, 8 * size_of(f32), 3 * size_of(f32))
+	gl.VertexAttribPointer(1, 2, gl.FLOAT, gl.FALSE, 5 * size_of(f32), 3 * size_of(f32))
 	gl.EnableVertexAttribArray(1)
-	gl.VertexAttribPointer(2, 2, gl.FLOAT, gl.FALSE, 8 * size_of(f32), 6 * size_of(f32))
-	gl.EnableVertexAttribArray(2)
 	// ebo (for drawing a rectangle)
 	ebo: u32
 	gl.GenBuffers(1, &ebo)
@@ -180,7 +178,7 @@ main :: proc() {
 		// set background color
 		gl.ClearColor(.2, .3, .3, 1)
 		// rendering commands here
-		gl.Clear(gl.COLOR_BUFFER_BIT)
+		gl.Clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT)
 
 		//bind texture to rect
 		gl.ActiveTexture(gl.TEXTURE0)
@@ -188,25 +186,48 @@ main :: proc() {
 		gl.ActiveTexture(gl.TEXTURE1)
 		gl.BindTexture(gl.TEXTURE_2D, texture2)
 
-		// some math baby ---------------------------------------------
-		trans := glsl.mat4(1)
-		trans = linalg.matrix4_rotate(f32(glfw.GetTime()), [3]f32{0, 0, 1}) * trans
-		trans = linalg.matrix4_translate_f32({.5, -.5, 0}) * trans
-		// -------------------------------------------------------------
-		transformLoc := gl.GetUniformLocation(transform_shader.id, "transform")
-		gl.UniformMatrix4fv(transformLoc, 1, false, &trans[0][0])
 
+		// order of matrix for camera goes as follows:
+		// model matrix
+		model := glsl.mat4(1)
+		model =
+			linalg.matrix4_rotate(
+				f32(glfw.GetTime()) * f32(glsl.radians(f32(50))),
+				[3]f32{.5, 1, 0},
+			) *
+			model
+		// view matrix
+		view := glsl.mat4(1)
+		view = linalg.matrix4_translate([3]f32{0, 0, -3}) * view
+		// projection matrix
+		projection := glsl.mat4Perspective(
+			glsl.radians(f32(45)),
+			f32(screen_width) / f32(screen_height),
+			.1,
+			100,
+		)
+		view_loc := gl.GetUniformLocation(transform_shader.id, "view")
+		gl.UniformMatrix4fv(view_loc, 1, false, &view[0][0])
+		projection_loc := gl.GetUniformLocation(transform_shader.id, "projection")
+		gl.UniformMatrix4fv(projection_loc, 1, false, &projection[0][0])
 
 		gl.BindVertexArray(vao)
-		gl.DrawElements(gl.TRIANGLES, 6, gl.UNSIGNED_INT, nil)
 
-		trans = glsl.mat4(1)
-		scale_amount := f32(linalg.sin(glfw.GetTime()))
-		trans = linalg.matrix4_scale_f32({scale_amount, scale_amount, scale_amount}) * trans
-		fmt.println(trans)
-		trans = linalg.matrix4_translate_f32({-.5, .5, 0}) * trans
-		gl.UniformMatrix4fv(transformLoc, 1, false, &trans[0][0])
-		gl.DrawElements(gl.TRIANGLES, 6, gl.UNSIGNED_INT, nil)
+		for pos, i in cube_positions { 	// if you really study you will understand how this sets the position of the object.
+			model = glsl.mat4(1)
+			fmt.println(pos)
+			angle: f32 = 20 * f32(i)
+			model = linalg.matrix4_rotate(linalg.to_radians(angle), vec3{1, .3, .5}) * model
+			model = linalg.matrix4_translate(pos) * model
+			model_loc := gl.GetUniformLocation(transform_shader.id, "model")
+			gl.UniformMatrix4fv(model_loc, 1, false, &model[0][0])
+			gl.DrawArrays(gl.TRIANGLES, 0, 36)
+		}
+
+
+		//gl.DrawArrays(gl.TRIANGLES, 0, 36)
+		//gl.DrawElements(gl.TRIANGLES, 6, gl.UNSIGNED_INT, nil)
+
 
 		// bind first triangle
 		//gl.BindVertexArray(vao)
