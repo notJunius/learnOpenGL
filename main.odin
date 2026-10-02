@@ -2,6 +2,7 @@ package engine
 
 import "base:runtime"
 import "core:fmt"
+import "core:math"
 import "core:math/linalg"
 import "core:math/linalg/glsl"
 import "core:strings"
@@ -168,6 +169,13 @@ main :: proc() {
 	set_shader_int(&transform_shader, "our_texture", 0)
 	set_shader_int(&transform_shader, "our_texture2", 1)
 
+	camera_pos := vec3{0, 0, 3}
+	camera_target := vec3{0, 0, 0}
+	camera_direction := glsl.normalize_vec3(camera_pos - camera_target)
+	up := vec3{0, 1, 0}
+	camera_right := glsl.normalize_vec3(glsl.cross_vec3(up, camera_direction))
+	camera_up := glsl.cross_vec3(camera_direction, camera_right)
+
 
 	// render loop
 	for !glfw.WindowShouldClose(window) {
@@ -197,8 +205,11 @@ main :: proc() {
 			) *
 			model
 		// view matrix
+		radius: f32 = 10
+		cam_x: f32 = f32(linalg.sin(glfw.GetTime())) * radius
+		cam_z: f32 = f32(linalg.cos(glfw.GetTime())) * radius
 		view := glsl.mat4(1)
-		view = linalg.matrix4_translate([3]f32{0, 0, -3}) * view
+		view = linalg.matrix4_look_at_f32({cam_x, camera_pos.y, cam_z}, camera_target, camera_up)
 		// projection matrix
 		projection := glsl.mat4Perspective(
 			glsl.radians(f32(45)),
