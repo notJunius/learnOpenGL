@@ -21,6 +21,23 @@ screen_width :: 800
 visibility: f32 = .2
 
 
+// calculating delta time
+delta_time: f32 = 0
+last_frame: f32 = 0
+current_frame: f32
+
+// camera
+camera_pos := vec3{0, 0, 3}
+camera_front := vec3{0, 0, -1}
+camera_up := vec3{0, 1, 0}
+yaw: f32 = -90
+pitch: f32 = 0
+last_x: f64 = 400
+last_y: f64 = 300
+fov: f32 = 45
+// camera
+
+
 main :: proc() {
 
 
@@ -47,6 +64,9 @@ main :: proc() {
 	glfw.SetFramebufferSizeCallback(window, framebuffer_size_callback)
 
 	gl.Enable(gl.DEPTH_TEST)
+	glfw.SetInputMode(window, glfw.CURSOR, glfw.CURSOR_DISABLED)
+	glfw.SetCursorPosCallback(window, mouse_callback)
+	glfw.SetScrollCallback(window, scroll_callback)
 
 
 	//vbos and vaos
@@ -169,19 +189,16 @@ main :: proc() {
 	set_shader_int(&transform_shader, "our_texture", 0)
 	set_shader_int(&transform_shader, "our_texture2", 1)
 
-	camera_pos := vec3{0, 0, 3}
-	camera_target := vec3{0, 0, 0}
-	camera_direction := glsl.normalize_vec3(camera_pos - camera_target)
-	up := vec3{0, 1, 0}
-	camera_right := glsl.normalize_vec3(glsl.cross_vec3(up, camera_direction))
-	camera_up := glsl.cross_vec3(camera_direction, camera_right)
-
-
 	// render loop
 	for !glfw.WindowShouldClose(window) {
 
+		current_frame = f32(glfw.GetTime())
+		delta_time = current_frame - last_frame
+		last_frame = current_frame
+		fmt.println(delta_time)
+
 		//input
-		process_input(window)
+		process_input(window, delta_time)
 
 		// set background color
 		gl.ClearColor(.2, .3, .3, 1)
@@ -205,14 +222,11 @@ main :: proc() {
 			) *
 			model
 		// view matrix
-		radius: f32 = 10
-		cam_x: f32 = f32(linalg.sin(glfw.GetTime())) * radius
-		cam_z: f32 = f32(linalg.cos(glfw.GetTime())) * radius
 		view := glsl.mat4(1)
-		view = linalg.matrix4_look_at_f32({cam_x, camera_pos.y, cam_z}, camera_target, camera_up)
+		view = linalg.matrix4_look_at_f32(camera_pos, camera_pos + camera_front, camera_up)
 		// projection matrix
 		projection := glsl.mat4Perspective(
-			glsl.radians(f32(45)),
+			glsl.radians(f32(fov)),
 			f32(screen_width) / f32(screen_height),
 			.1,
 			100,
@@ -267,8 +281,61 @@ framebuffer_size_callback :: proc "c" (window: glfw.WindowHandle, width, height:
 	fmt.printfln("Framebuffer resized to: %dx%d", width, height)
 }
 
-process_input :: proc(window: glfw.WindowHandle) {
+process_input :: proc(window: glfw.WindowHandle, dt: f32) {
 	if glfw.GetKey(window, glfw.KEY_ESCAPE) == glfw.PRESS {
 		glfw.SetWindowShouldClose(window, true)
+	}
+	CAMERA_SPEED: f32 = 3 * dt
+	if glfw.GetKey(window, glfw.KEY_W) == glfw.PRESS {
+		camera_pos += CAMERA_SPEED * camera_front
+	}
+	if glfw.GetKey(window, glfw.KEY_S) == glfw.PRESS {
+		camera_pos -= CAMERA_SPEED * camera_front
+	}
+	if glfw.GetKey(window, glfw.KEY_A) == glfw.PRESS {
+		camera_pos -= glsl.normalize_vec3(glsl.cross_vec3(camera_front, camera_up)) * CAMERA_SPEED
+	}
+	if glfw.GetKey(window, glfw.KEY_D) == glfw.PRESS {
+		camera_pos += glsl.normalize_vec3(glsl.cross_vec3(camera_front, camera_up)) * CAMERA_SPEED
+	}
+}
+
+
+mouse_callback :: proc "c" (window: glfw.WindowHandle, x_pos, y_pos: f64) {
+	x_offset := x_pos - last_x
+	y_offset := last_y - y_pos
+	last_x = x_pos
+	last_y = y_pos
+
+	sensitivity: f64 : 0.1
+	x_offset *= sensitivity
+	y_offset *= sensitivity
+
+	yaw += f32(x_offset)
+	pitch += f32(y_offset)
+
+	if pitch > 89 {
+		pitch = 89
+	}
+	if pitch < -89 {
+		pitch = -89
+	}
+
+	camera_direction: vec3 = {
+		math.cos_f32(linalg.to_radians(yaw)) * math.cos_f32(linalg.to_radians(pitch)),
+		math.sin_f32(linalg.to_radians(pitch)),
+		math.sin_f32(linalg.to_radians(yaw)) * math.cos_f32(linalg.to_radians(pitch)),
+	}
+	camera_front = glsl.normalize_vec3(camera_direction)
+}
+
+
+scroll_callback :: proc "c" (window: glfw.WindowHandle, x_offset, y_offset: f64) {
+	fov -= f32(y_offset)
+	if fov < 1 {
+		fov = 1
+	}
+	if fov > 45 {
+		fov = 45
 	}
 }
