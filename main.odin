@@ -15,8 +15,14 @@ import stb_i "vendor:stb/image"
 GL_MAJOR_VERSION :: 4
 GL_MINOR_VERSION :: 6
 
+
+// globals
 screen_height :: 600
 screen_width :: 800
+
+last_x: f64 = screen_width / 2
+last_y: f64 = screen_height / 2
+first_mouse := true
 
 visibility: f32 = .2
 
@@ -26,19 +32,13 @@ delta_time: f32 = 0
 last_frame: f32 = 0
 current_frame: f32
 
-// camera
-camera_pos := vec3{0, 0, 3}
-camera_front := vec3{0, 0, -1}
-camera_up := vec3{0, 1, 0}
-yaw: f32 = -90
-pitch: f32 = 0
-last_x: f64 = 400
-last_y: f64 = 300
-fov: f32 = 45
-// camera
+camera: Camera
 
 
 main :: proc() {
+
+	// camera
+	camera = init_camera_vec({0, 0, 3})
 
 
 	// init glfw
@@ -195,10 +195,9 @@ main :: proc() {
 		current_frame = f32(glfw.GetTime())
 		delta_time = current_frame - last_frame
 		last_frame = current_frame
-		fmt.println(delta_time)
 
 		//input
-		process_input(window, delta_time)
+		process_input(&camera, window, delta_time)
 
 		// set background color
 		gl.ClearColor(.2, .3, .3, 1)
@@ -212,35 +211,27 @@ main :: proc() {
 		gl.BindTexture(gl.TEXTURE_2D, texture2)
 
 
-		// order of matrix for camera goes as follows:
-		// model matrix
-		model := glsl.mat4(1)
-		model =
-			linalg.matrix4_rotate(
-				f32(glfw.GetTime()) * f32(glsl.radians(f32(50))),
-				[3]f32{.5, 1, 0},
-			) *
-			model
-		// view matrix
-		view := glsl.mat4(1)
-		view = linalg.matrix4_look_at_f32(camera_pos, camera_pos + camera_front, camera_up)
+		// activate shader
+		use_shader(&transform_shader)
+
 		// projection matrix
 		projection := glsl.mat4Perspective(
-			glsl.radians(f32(fov)),
+			linalg.to_radians(camera.zoom),
 			f32(screen_width) / f32(screen_height),
 			.1,
 			100,
 		)
-		view_loc := gl.GetUniformLocation(transform_shader.id, "view")
-		gl.UniformMatrix4fv(view_loc, 1, false, &view[0][0])
 		projection_loc := gl.GetUniformLocation(transform_shader.id, "projection")
 		gl.UniformMatrix4fv(projection_loc, 1, false, &projection[0][0])
+		//view matrix
+		view := get_view_matrix(&camera)
+		view_loc := gl.GetUniformLocation(transform_shader.id, "view")
+		gl.UniformMatrix4fv(view_loc, 1, false, &view[0][0])
 
 		gl.BindVertexArray(vao)
 
 		for pos, i in cube_positions { 	// if you really study you will understand how this sets the position of the object.
-			model = glsl.mat4(1)
-			fmt.println(pos)
+			model := glsl.mat4(1)
 			angle: f32 = 20 * f32(i)
 			model = linalg.matrix4_rotate(linalg.to_radians(angle), vec3{1, .3, .5}) * model
 			model = linalg.matrix4_translate(pos) * model
@@ -281,61 +272,48 @@ framebuffer_size_callback :: proc "c" (window: glfw.WindowHandle, width, height:
 	fmt.printfln("Framebuffer resized to: %dx%d", width, height)
 }
 
-process_input :: proc(window: glfw.WindowHandle, dt: f32) {
+process_input :: proc(c: ^Camera, window: glfw.WindowHandle, dt: f32) {
 	if glfw.GetKey(window, glfw.KEY_ESCAPE) == glfw.PRESS {
 		glfw.SetWindowShouldClose(window, true)
 	}
 	CAMERA_SPEED: f32 = 3 * dt
 	if glfw.GetKey(window, glfw.KEY_W) == glfw.PRESS {
-		camera_pos += CAMERA_SPEED * camera_front
+		process_keyboard(c, .FORWARD, dt)
 	}
 	if glfw.GetKey(window, glfw.KEY_S) == glfw.PRESS {
-		camera_pos -= CAMERA_SPEED * camera_front
+		process_keyboard(c, .BACKWARD, dt)
 	}
 	if glfw.GetKey(window, glfw.KEY_A) == glfw.PRESS {
-		camera_pos -= glsl.normalize_vec3(glsl.cross_vec3(camera_front, camera_up)) * CAMERA_SPEED
+		process_keyboard(c, .LEFT, dt)
 	}
 	if glfw.GetKey(window, glfw.KEY_D) == glfw.PRESS {
-		camera_pos += glsl.normalize_vec3(glsl.cross_vec3(camera_front, camera_up)) * CAMERA_SPEED
+		process_keyboard(c, .RIGHT, dt)
 	}
 }
 
 
 mouse_callback :: proc "c" (window: glfw.WindowHandle, x_pos, y_pos: f64) {
+	context = runtime.default_context()
+
+	if first_mouse {
+		last_x = x_pos
+		last_y = y_pos
+		first_mouse = false
+	}
+
+
 	x_offset := x_pos - last_x
 	y_offset := last_y - y_pos
 	last_x = x_pos
 	last_y = y_pos
 
-	sensitivity: f64 : 0.1
-	x_offset *= sensitivity
-	y_offset *= sensitivity
+	process_mouse_movement(&camera, f32(x_offset), f32(y_offset))
 
-	yaw += f32(x_offset)
-	pitch += f32(y_offset)
 
-	if pitch > 89 {
-		pitch = 89
-	}
-	if pitch < -89 {
-		pitch = -89
-	}
-
-	camera_direction: vec3 = {
-		math.cos_f32(linalg.to_radians(yaw)) * math.cos_f32(linalg.to_radians(pitch)),
-		math.sin_f32(linalg.to_radians(pitch)),
-		math.sin_f32(linalg.to_radians(yaw)) * math.cos_f32(linalg.to_radians(pitch)),
-	}
-	camera_front = glsl.normalize_vec3(camera_direction)
 }
 
 
 scroll_callback :: proc "c" (window: glfw.WindowHandle, x_offset, y_offset: f64) {
-	fov -= f32(y_offset)
-	if fov < 1 {
-		fov = 1
-	}
-	if fov > 45 {
-		fov = 45
-	}
+	context = runtime.default_context()
+	process_mouse_scroll(&camera, f32(y_offset))
 }
