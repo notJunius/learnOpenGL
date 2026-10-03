@@ -192,6 +192,7 @@ main :: proc() {
 	// render loop
 	for !glfw.WindowShouldClose(window) {
 
+		// get dt
 		current_frame = f32(glfw.GetTime())
 		delta_time = current_frame - last_frame
 		last_frame = current_frame
@@ -239,21 +240,6 @@ main :: proc() {
 			gl.UniformMatrix4fv(model_loc, 1, false, &model[0][0])
 			gl.DrawArrays(gl.TRIANGLES, 0, 36)
 		}
-
-
-		//gl.DrawArrays(gl.TRIANGLES, 0, 36)
-		//gl.DrawElements(gl.TRIANGLES, 6, gl.UNSIGNED_INT, nil)
-
-
-		// bind first triangle
-		//gl.BindVertexArray(vao)
-		//use_shader(&hello_shader)
-		//gl.DrawArrays(gl.TRIANGLES, 0, 3)
-		//use_shader(&move_right)
-		//set_shader_float(&move_right, "x_adjust", .5)
-		//gl.DrawArrays(gl.TRIANGLES, 0, 3)
-		//gl.DrawElements(gl.TRIANGLES, 6, gl.UNSIGNED_INT, nil)
-
 
 		//check call events and swap the buffers
 		glfw.PollEvents()
