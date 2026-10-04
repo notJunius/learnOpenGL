@@ -63,38 +63,10 @@ main :: proc() {
 	gl.Viewport(0, 0, 800, 600)
 	glfw.SetFramebufferSizeCallback(window, framebuffer_size_callback)
 
-	gl.Enable(gl.DEPTH_TEST)
 	glfw.SetInputMode(window, glfw.CURSOR, glfw.CURSOR_DISABLED)
 	glfw.SetCursorPosCallback(window, mouse_callback)
 	glfw.SetScrollCallback(window, scroll_callback)
 
-
-	//vbos and vaos
-	vbo, vao: u32
-	gl.GenVertexArrays(1, &vao)
-	gl.GenBuffers(1, &vbo)
-	defer gl.DeleteVertexArrays(1, &vao)
-	defer gl.DeleteBuffers(1, &vbo)
-	// for first triangle
-	// bind the VAO first,
-	gl.BindVertexArray(vao)
-	//then bind and set VBO
-	gl.BindBuffer(gl.ARRAY_BUFFER, vbo)
-	gl.BufferData(gl.ARRAY_BUFFER, size_of(cube_vertices), &cube_vertices, gl.STATIC_DRAW)
-	//then configure vertex attributes
-	// first attribute of first triangle
-	gl.VertexAttribPointer(0, 3, gl.FLOAT, gl.FALSE, 5 * size_of(f32), 0)
-	gl.EnableVertexAttribArray(0)
-	gl.VertexAttribPointer(1, 2, gl.FLOAT, gl.FALSE, 5 * size_of(f32), 3 * size_of(f32))
-	gl.EnableVertexAttribArray(1)
-	// ebo (for drawing a rectangle)
-	ebo: u32
-	gl.GenBuffers(1, &ebo)
-	gl.BindBuffer(gl.ELEMENT_ARRAY_BUFFER, ebo)
-	gl.BufferData(gl.ELEMENT_ARRAY_BUFFER, size_of(rect_indices), &rect_indices, gl.STATIC_DRAW)
-
-	// uncomment this is you want to draw in wireframe polygons
-	// gl.PolygonMode(gl.FRONT_AND_BACK, gl.LINE)
 
 	hello_shader := make_shader("./shaders/v_shader.vs", "./shaders/f_shader.fs")
 	ud_shader := make_shader("./shaders/upside_down.vs", "./shaders/f_shader.fs")
@@ -189,6 +161,11 @@ main :: proc() {
 	set_shader_int(&transform_shader, "our_texture", 0)
 	set_shader_int(&transform_shader, "our_texture2", 1)
 
+	two_triangles := load_to_vao(two_triangles_vertices[:])
+	first := load_to_vao(first_vertices[:])
+	second := load_to_vao(second_vertices[:])
+	models := [2]^raw_model{&first, &second}
+
 	// render loop
 	for !glfw.WindowShouldClose(window) {
 
@@ -200,46 +177,13 @@ main :: proc() {
 		//input
 		process_input(&camera, window, delta_time)
 
-		// set background color
-		gl.ClearColor(.2, .3, .3, 1)
-		// rendering commands here
-		gl.Clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT)
+		prepare()
 
-		//bind texture to rect
-		gl.ActiveTexture(gl.TEXTURE0)
-		gl.BindTexture(gl.TEXTURE_2D, texture)
-		gl.ActiveTexture(gl.TEXTURE1)
-		gl.BindTexture(gl.TEXTURE_2D, texture2)
-
-
-		// activate shader
-		use_shader(&transform_shader)
-
-		// projection matrix
-		projection := glsl.mat4Perspective(
-			linalg.to_radians(camera.zoom),
-			f32(screen_width) / f32(screen_height),
-			.1,
-			100,
-		)
-		projection_loc := gl.GetUniformLocation(transform_shader.id, "projection")
-		gl.UniformMatrix4fv(projection_loc, 1, false, &projection[0][0])
-		//view matrix
-		view := get_view_matrix(&camera)
-		view_loc := gl.GetUniformLocation(transform_shader.id, "view")
-		gl.UniformMatrix4fv(view_loc, 1, false, &view[0][0])
-
-		gl.BindVertexArray(vao)
-
-		for pos, i in cube_positions { 	// if you really study you will understand how this sets the position of the object.
-			model := glsl.mat4(1)
-			angle: f32 = 20 * f32(i)
-			model = linalg.matrix4_rotate(linalg.to_radians(angle), vec3{1, .3, .5}) * model
-			model = linalg.matrix4_translate(pos) * model
-			model_loc := gl.GetUniformLocation(transform_shader.id, "model")
-			gl.UniformMatrix4fv(model_loc, 1, false, &model[0][0])
-			gl.DrawArrays(gl.TRIANGLES, 0, 36)
+		use_shader(&hello_shader)
+		for model in models {
+			render(model)
 		}
+
 
 		//check call events and swap the buffers
 		glfw.PollEvents()
