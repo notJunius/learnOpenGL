@@ -1,8 +1,12 @@
 package engine
+import "core:fmt"
+import "core:strings"
 import gl "vendor:OpenGL"
+import "vendor:stb/image"
 
 vaos: [dynamic]u32
 vbos: [dynamic]u32
+textures: [dynamic]u32
 
 
 load_to_vao :: proc(positions: []f32) -> raw_model {
@@ -22,6 +26,42 @@ create_vao :: proc() -> u32 {
 	return vao_id
 }
 
+load_texture :: proc(file_name: string) -> u32 {
+	texture: u32
+	gl.GenTextures(1, &texture)
+	gl.BindTexture(gl.TEXTURE_2D, texture)
+	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.REPEAT)
+	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.REPEAT)
+	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR_MIPMAP_LINEAR)
+	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR)
+	width, height, nr_channels: i32
+	texture_data: [^]u8 = image.load(
+		strings.clone_to_cstring(file_name),
+		&width,
+		&height,
+		&nr_channels,
+		0,
+	)
+	defer image.image_free(texture_data)
+	if texture_data != nil {
+		gl.TexImage2D(
+			gl.TEXTURE_2D,
+			0,
+			gl.RGBA,
+			width,
+			height,
+			0,
+			gl.RGBA,
+			gl.UNSIGNED_BYTE,
+			texture_data,
+		)
+		gl.GenerateMipmap(gl.TEXTURE_2D)
+	} else {
+		fmt.println("Failed to load texture")
+	}
+	return texture
+}
+
 store_data_in_attribute_list :: proc(attribute_number: u32, data: []f32) {
 	vbo_id: u32
 	gl.GenBuffers(1, &vbo_id)
@@ -31,8 +71,6 @@ store_data_in_attribute_list :: proc(attribute_number: u32, data: []f32) {
 	gl.BufferData(gl.ARRAY_BUFFER, size_of(f32) * len(data), raw_data(data), gl.STATIC_DRAW)
 	gl.VertexAttribPointer(attribute_number, 3, gl.FLOAT, false, 0, 0)
 	unbind_vbo()
-
-
 }
 
 // unbinds vao by binding it to 0
